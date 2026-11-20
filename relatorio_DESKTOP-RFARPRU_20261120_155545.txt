@@ -1,0 +1,54 @@
+===== BUCKET SORT: SEQUENCIAL x PARALELO (OpenMP) =====
+Data/hora   : 20/11/2026 15:55:45
+Sistema     : Windows 10 Pro 22H2 (build 19045)
+Maquina     : DESKTOP-RFARPRU
+CPU         : AMD Ryzen 5 7600 6-Core Processor
+Nucleos     : 6 fisicos / 12 logicos
+RAM         : 31.1 GB
+Compilador  : GCC 16.2.0
+OpenMP      : 5.2 (_OPENMP = 202111)
+Parametros  : ~100 elementos por balde, media de 5 execucoes (+1 de aquecimento), semente 42
+
+           N  Versao      Threads    Tempo(s)   Speedup  Eficiencia  Correto
+     1000000  sequencial        -      0.0283      1.00           -      sim
+     1000000  paralela          1      0.0284      1.00       99.6%      sim
+     1000000  paralela          2      0.0167      1.69       84.7%      sim
+     1000000  paralela          3      0.0132      2.15       71.6%      sim
+     1000000  paralela          4      0.0110      2.58       64.4%      sim
+     1000000  paralela          5      0.0098      2.90       58.0%      sim
+     1000000  paralela          6      0.0092      3.06       51.1%      sim
+     1000000  paralela          7      0.0086      3.27       46.8%      sim
+     1000000  paralela          8      0.0081      3.47       43.4%      sim
+     1000000  paralela          9      0.0081      3.48       38.7%      sim
+     1000000  paralela         10      0.0073      3.89       38.9%      sim
+     1000000  paralela         11      0.0073      3.87       35.2%      sim
+     1000000  paralela         12      0.0069      4.12       34.3%      sim
+
+    10000000  sequencial        -      0.3451      1.00           -      sim
+    10000000  paralela          1      0.3378      1.02      102.2%      sim
+    10000000  paralela          2      0.2117      1.63       81.5%      sim
+    10000000  paralela          3      0.1707      2.02       67.4%      sim
+    10000000  paralela          4      0.1389      2.48       62.1%      sim
+    10000000  paralela          5      0.1261      2.74       54.7%      sim
+    10000000  paralela          6      0.1216      2.84       47.3%      sim
+    10000000  paralela          7      0.1149      3.00       42.9%      sim
+    10000000  paralela          8      0.1071      3.22       40.3%      sim
+    10000000  paralela          9      0.1034      3.34       37.1%      sim
+    10000000  paralela         10      0.0994      3.47       34.7%      sim
+    10000000  paralela         11      0.0969      3.56       32.4%      sim
+    10000000  paralela         12      0.0944      3.66       30.5%      sim
+
+    50000000  sequencial        -      2.0053      1.00           -      sim
+    50000000  paralela          1      1.9439      1.03      103.2%      sim
+    50000000  paralela          2      1.3370      1.50       75.0%      sim
+    50000000  paralela          3      1.1882      1.69       56.3%      sim
+    50000000  paralela          4      0.9596      2.09       52.2%      sim
+    50000000  paralela          5      0.8641      2.32       46.4%      sim
+    50000000  paralela          6      0.8462      2.37       39.5%      sim
+    50000000  paralela          7      0.7774      2.58       36.8%      sim
+    50000000  paralela          8      0.7557      2.65       33.2%      sim
+    50000000  paralela          9      0.7180      2.79       31.0%      sim
+    50000000  paralela         10      0.7208      2.78       27.8%      sim
+    50000000  paralela         11      0.6772      2.96       26.9%      sim
+    50000000  paralela         12      0.6732      2.98       24.8%      sim
+
