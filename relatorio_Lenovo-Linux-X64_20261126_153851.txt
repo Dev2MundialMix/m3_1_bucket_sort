@@ -1,0 +1,30 @@
+===== BUCKET SORT: SEQUENCIAL x PARALELO (OpenMP) =====
+Data/hora   : 26/11/2026 15:38:51
+Sistema     : CachyOS (kernel 7.3.5-2-cachyos)
+Maquina     : Lenovo-Linux-X64
+CPU         : AMD Ryzen 7 7735HS with Radeon Graphics
+Nucleos     : 8 fisicos / 16 logicos
+RAM         : 13.3 GB
+Compilador  : GCC 16.2.1 20261122
+OpenMP      : 5.2 (_OPENMP = 202111)
+Parametros  : ~100 elementos por balde, media de 5 execucoes (+1 de aquecimento), semente 42
+
+           N  Versao      Threads    Tempo(s)   Speedup  Eficiencia  Correto
+    10000000  sequencial        -      0.3677      1.00           -      sim
+    10000000  paralela          1      0.3667      1.00      100.3%      sim
+    10000000  paralela          2      0.2577      1.43       71.3%      sim
+    10000000  paralela          3      0.2337      1.57       52.4%      sim
+    10000000  paralela          4      0.2060      1.78       44.6%      sim
+    10000000  paralela          5      0.1942      1.89       37.9%      sim
+    10000000  paralela          6      0.1812      2.03       33.8%      sim
+    10000000  paralela          7      0.1744      2.11       30.1%      sim
+    10000000  paralela          8      0.1631      2.25       28.2%      sim
+    10000000  paralela          9      0.1687      2.18       24.2%      sim
+    10000000  paralela         10      0.1691      2.17       21.7%      sim
+    10000000  paralela         11      0.1718      2.14       19.5%      sim
+    10000000  paralela         12      0.1694      2.17       18.1%      sim
+    10000000  paralela         13      0.1671      2.20       16.9%      sim
+    10000000  paralela         14      0.1656      2.22       15.9%      sim
+    10000000  paralela         15      0.1649      2.23       14.9%      sim
+    10000000  paralela         16      0.1650      2.23       13.9%      sim
+

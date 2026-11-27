@@ -1,0 +1,48 @@
+===== BUCKET SORT: SEQUENCIAL x PARALELO (OpenMP) =====
+Data/hora   : 26/11/2026 15:48:51
+Sistema     : Windows 11 Pro 26H2 (build 26300)
+Maquina     : DEV01
+CPU         : 13th Gen Intel(R) Core(TM) i7-13620H
+Nucleos     : 10 fisicos / 16 logicos
+RAM         : 15.7 GB
+Compilador  : GCC 16.2.0
+OpenMP      : 5.2 (_OPENMP = 202111)
+Parametros  : ~100 elementos por balde, media de 5 execucoes (+1 de aquecimento), semente 42
+
+           N  Versao      Threads    Tempo(s)   Speedup  Eficiencia  Correto
+     1000000  sequencial        -      0.0311      1.00           -      sim
+     1000000  paralela          1      0.0317      0.98       97.9%      sim
+     1000000  paralela          2      0.0177      1.76       88.0%      sim
+     1000000  paralela          3      0.0153      2.04       67.9%      sim
+     1000000  paralela          4      0.0116      2.67       66.8%      sim
+     1000000  paralela          5      0.0110      2.81       56.3%      sim
+     1000000  paralela          6      0.0103      3.02       50.3%      sim
+     1000000  paralela          7      0.0108      2.88       41.2%      sim
+     1000000  paralela          8      0.0103      3.02       37.8%      sim
+     1000000  paralela          9      0.0111      2.81       31.2%      sim
+     1000000  paralela         10      0.0108      2.88       28.8%      sim
+     1000000  paralela         11      0.0104      2.99       27.2%      sim
+     1000000  paralela         12      0.0099      3.14       26.2%      sim
+     1000000  paralela         13      0.0095      3.29       25.3%      sim
+     1000000  paralela         14      0.0081      3.85       27.5%      sim
+     1000000  paralela         15      0.0070      4.43       29.5%      sim
+     1000000  paralela         16      0.0066      4.71       29.4%      sim
+
+    10000000  sequencial        -      0.4214      1.00           -      sim
+    10000000  paralela          1      0.3991      1.06      105.6%      sim
+    10000000  paralela          2      0.2253      1.87       93.5%      sim
+    10000000  paralela          3      0.2110      2.00       66.6%      sim
+    10000000  paralela          4      0.1768      2.38       59.6%      sim
+    10000000  paralela          5      0.1665      2.53       50.6%      sim
+    10000000  paralela          6      0.1577      2.67       44.5%      sim
+    10000000  paralela          7      0.1549      2.72       38.9%      sim
+    10000000  paralela          8      0.1452      2.90       36.3%      sim
+    10000000  paralela          9      0.1228      3.43       38.1%      sim
+    10000000  paralela         10      0.1179      3.58       35.8%      sim
+    10000000  paralela         11      0.1167      3.61       32.8%      sim
+    10000000  paralela         12      0.1213      3.48       29.0%      sim
+    10000000  paralela         13      0.1347      3.13       24.1%      sim
+    10000000  paralela         14      0.1290      3.27       23.3%      sim
+    10000000  paralela         15      0.1236      3.41       22.7%      sim
+    10000000  paralela         16      0.1262      3.34       20.9%      sim
+
