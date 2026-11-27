@@ -1,0 +1,243 @@
+ROTEIRO DE APRESENTAÇÃO - BUCKET SORT PARALELO COM OPENMP
+Avaliação 05 - Programação Paralela - UNIVALI - novembro de 2026
+
+Arquivo dos slides: bucket_sort_openmp.pptx (19 slides). As falas abaixo também estão,
+resumidas, nas anotações de cada slide (aparecem no Modo de Apresentação do PowerPoint).
+
+
+==========================================================================================
+1. VISÃO GERAL
+==========================================================================================
+
+São cerca de 18 minutos de fala, com a demonstração ao vivo no meio, mais o tempo de
+perguntas. Ajustem os tempos ao limite que o professor der.
+
+  Parte                          Slides                                       Tempo       Quem
+  Abertura e contexto            1 a 4: capa, introdução, algoritmo,          3 min 45 s  [nome]
+                                 histórico
+  Arquitetura e acelerador       5 a 7: arquitetura, fork-join, i7-13620H     3 min 15 s  [nome]
+  Ambiente e código              8 a 10: ambiente, 5 passos, 3 fases          3 min 15 s  [nome]
+  Demonstração e resultados      11 a 14: exemplo + demo, gráfico, tabela,    5 min       [nome]
+                                 análise
+  Comparativo e fechamento       15 a 19: comparativos, futuro, conclusão,    3 min       [nome]
+                                 referências
+
+O que levar: o notebook com o projeto compilado, o arquivo dos slides (e o PDF de reserva) e
+um terminal já aberto na pasta do projeto.
+
+
+==========================================================================================
+2. ROTEIRO SLIDE A SLIDE
+==========================================================================================
+
+Cada slide tem o tempo sugerido, a fala e o ponto que não pode faltar. A fala é um guia:
+digam com as próprias palavras.
+
+------------------------------------------------------------------------------------------
+ABERTURA E CONTEXTO
+------------------------------------------------------------------------------------------
+
+[1] Capa - 30 s
+"Boa tarde. Somos o grupo [nomes] e o nosso tema é o G: OpenMP com Bucket Sort. A pergunta
+que vamos responder é: se a ordenação usar todos os núcleos da CPU, quanto mais rápida ela
+fica?"
+
+[2] Introdução - 1 min
+"Ordenar dados é uma das tarefas mais comuns da computação, mas um programa comum usa só um
+núcleo. Nós dividimos o Bucket Sort entre os núcleos com OpenMP e comparamos com a versão
+sequencial, em quatro máquinas. Vamos usar duas medidas: speedup, que diz quantas vezes ficou
+mais rápido, e eficiência, que diz quanto cada thread rendeu."
+>> Destaque: a definição de speedup, porque ela volta em todos os resultados.
+
+[3] O algoritmo - 1 min 15 s
+"O Bucket Sort recebe valores entre 0 e 1 e separa por faixa. O 0,42 vezes 4 dá 1,68, então
+vai para o balde 1. Depois cada balde é ordenado sozinho e os baldes são juntados em ordem."
+>> Destaque: cada balde é independente dos outros, e é isso que permite paralelizar.
+
+[4] Histórico e evolução - 1 min
+"A ideia do Bucket Sort é de 1956. Em 1967, Amdahl mostrou que a parte sequencial limita o
+ganho do paralelismo. A virada foi em 2005: a frequência parou de subir por causa do calor e
+os PCs ganharam vários núcleos. Desde então, para ficar mais rápido, o programa precisa ser
+paralelo."
+>> Destaque: 2005, o ponto laranja da linha do tempo.
+
+------------------------------------------------------------------------------------------
+ARQUITETURA E ACELERADOR
+------------------------------------------------------------------------------------------
+
+[5] Visão geral da arquitetura - 1 min
+"As máquinas que usamos são CPUs multicore de memória compartilhada: vários núcleos no mesmo
+chip, todos usando a mesma RAM. Cada núcleo tem caches próprias e todos dividem a L3.
+Guardem este ponto: o algoritmo move muitos dados, então a memória vai ser o gargalo."
+
+[6] OpenMP e fork-join - 1 min
+"OpenMP não é uma linguagem: são diretivas #pragma que o compilador entende, e no GCC basta
+compilar com -fopenmp. O modelo é fork-join: a thread principal abre uma equipe, todas
+trabalham e esperam numa barreira antes de seguir."
+
+[7] Detalhamento do acelerador - 1 min 15 s
+"Detalhamos o Intel i7-13620H, usado em duas execuções. Ele é híbrido: 6 P-cores rápidos com
+Hyper-Threading e 4 E-cores econômicos, o que dá 10 núcleos e 16 threads. Até umas 6 threads
+elas ficam nos P-cores; depois entram E-cores e núcleos divididos, e cada thread a mais rende
+menos."
+>> Destaque: a conta 6 x 2 + 4 = 16 threads.
+
+------------------------------------------------------------------------------------------
+AMBIENTE E CÓDIGO
+------------------------------------------------------------------------------------------
+
+[8] Ambiente de testes - 45 s
+"Rodamos o mesmo programa em quatro máquinas, com três processadores, no Windows e no Linux.
+Tudo em C, compilado com GCC 16.2 e OpenMP 5.2. Cada tempo é a média de cinco execuções,
+depois de uma de aquecimento."
+
+[9] O programa em 5 passos - 1 min
+"O programa gera os números com semente fixa, para os dados serem iguais em qualquer
+máquina. Mede o sequencial e depois o paralelo com 1, 2, 3 threads, até o total. Cada
+resultado paralelo é comparado com o sequencial, e tudo vai para um relatório."
+
+[10] As 3 fases paralelas - 1 min 30 s
+"Na fase 1, cada thread distribui a sua parte da entrada nos seus próprios baldes, então não
+precisa de trava. A fase 2 é sequencial e curta: calcula onde cada balde começa na saída. Na
+fase 3, cada thread pega 64 baldes por vez e ordena direto na posição final."
+>> Destaque: duas threads nunca escrevem no mesmo lugar, por isso não há condição de corrida.
+
+------------------------------------------------------------------------------------------
+DEMONSTRAÇÃO E RESULTADOS
+------------------------------------------------------------------------------------------
+
+[11] Exemplo de aplicação - 30 s + 1 min de demonstração
+"Agora vamos ordenar 10 milhões de números ao vivo." Façam a demonstração (seção 3) e voltem
+ao slide: "A mesma ideia é usada no TeraSort do Hadoop, em que cada balde é um computador
+inteiro, e em bancos de dados."
+
+[12] Gráfico de resultados - 1 min 15 s
+"Este é o speedup com 10 milhões em cada máquina. A linha tracejada é o ideal e todas ficam
+bem abaixo. Até 2 threads o ganho é bom; depois cada thread rende menos, e o Ryzen 7 para de
+crescer em 8 threads, o número de núcleos físicos dele."
+
+[13] Tabela por máquina - 1 min
+"O maior speedup não foi o menor tempo: o i7 do JIF7GP7 chegou a 4,76x, mas o sequencial
+dele era o mais lento. O desktop com Ryzen 5 terminou em 0,094 segundo, o mais rápido de
+todos. E todas as execuções deram resultado correto."
+
+[14] Análise - 1 min 15 s
+"Por que não 16 vezes? Quatro motivos: memória, parte sequencial, núcleos lógicos e turbo.
+Pela Lei de Amdahl, 4,76x com 16 threads é o esperado se uns 16% do tempo não escalar."
+>> Destaque: a memória, que liga com o slide 5.
+
+------------------------------------------------------------------------------------------
+COMPARATIVO E FECHAMENTO
+------------------------------------------------------------------------------------------
+
+[15] Comparativo de algoritmos - 45 s
+"Entre os algoritmos de ordenação, o Bucket Sort é o mais fácil de paralelizar, porque os
+baldes são independentes. A ressalva é que ele depende de dados bem espalhados; para os
+outros casos existe o Sample Sort."
+
+[16] Comparativo de ferramentas - 45 s
+"OpenMP é o caminho mais curto para usar todos os núcleos de um computador. Pthreads dá mais
+controle com mais código, MPI serve para clusters e CUDA para GPU."
+
+[17] Perspectivas futuras - 45 s
+"Os próximos passos atacam o gargalo: paralelizar a fase 2, evitar realloc e prender as
+threads nos P-cores. Mais adiante, GPU ou várias máquinas. Na indústria, a tendência é mais
+núcleos, chips híbridos e aceleradores no mesmo chip."
+
+[18] Conclusão - 45 s
+"Com poucas diretivas, o OpenMP deixou o Bucket Sort até 4,76 vezes mais rápido e sempre
+correto. O limite não foi o número de núcleos, e sim a memória e a parte sequencial.
+Obrigado, estamos abertos a perguntas."
+
+[19] Referências - durante as perguntas
+Deixem na tela enquanto respondem; não precisa ler.
+
+
+==========================================================================================
+3. DEMONSTRAÇÃO AO VIVO
+==========================================================================================
+
+A demonstração leva cerca de 1 minuto e acontece no slide 11. Usem um só tamanho
+(10 milhões); a bateria completa demora minutos.
+
+  1. Antes da aula, abram o terminal na pasta do projeto e confiram o compilador com
+     gcc --version.
+  2. Fechem o navegador e programas pesados; deixem o notebook na tomada e no modo de energia
+     "Melhor desempenho".
+  3. Rodem o comando:
+       Windows:  .\executar.bat 10000000
+       Linux:    sh executar.sh 10000000
+  4. Enquanto ele roda, leiam o cabeçalho: CPU, núcleos físicos e lógicos, versão do OpenMP.
+  5. Na tabela, mostrem três linhas: a sequencial (speedup 1,00), a de 2 threads e a do
+     máximo de threads. Apontem a coluna Correto, sempre "sim".
+  6. Mostrem o arquivo relatorio_<máquina>_<data>_<hora>.txt que apareceu na pasta.
+
+Avisem a turma que os números mudam um pouco a cada execução.
+
+PLANO B: se o gcc falhar, abram o relatório já gravado
+(relatorio_DESKTOP-RFARPRU_20261120_155545.txt) e sigam pelo slide 11.
+
+
+==========================================================================================
+4. PERGUNTAS PROVÁVEIS
+==========================================================================================
+
+As respostas têm uma ou duas frases, para dizer de memória.
+
+P: Como sabem que o resultado está certo?
+R: A saída sequencial é conferida como ordenada, e cada saída paralela é comparada com ela
+   byte a byte (memcmp).
+
+P: Por que não usar uma trava (lock) por balde?
+R: Cada inserção pagaria o custo de travar e destravar. Com baldes por thread, ninguém
+   disputa balde.
+
+P: Por que schedule(dynamic, 64) na fase 3?
+R: Os baldes têm tamanhos diferentes. Quem termina antes pega o próximo pacote de 64 e
+   ninguém fica parado.
+
+P: Por que cerca de 100 valores por balde, e não 1 como no Cormen?
+R: Menos alocações de memória e trabalho suficiente para cada thread; o insertion sort
+   continua rápido com 100 valores.
+
+P: Por que a eficiência com 1 thread passa de 100%?
+R: A versão paralela ordena direto no vetor final, o que muda o acesso à memória, e há
+   variação de medição. Não é ganho de paralelismo.
+
+P: Por que mais threads às vezes piora?
+R: Threads novas caem em E-cores ou dividem núcleo, disputam a memória e baixam o turbo.
+   O DEV01 caiu de 3,61x (11 threads) para 3,13x (13 threads).
+
+P: Mesma CPU, tempos diferentes?
+R: Modo de energia, temperatura e programas abertos mudam o resultado. O relatório não
+   registra isso.
+
+P: E se os dados não forem uniformes?
+R: Os baldes ficam desequilibrados e o pior caso é O(n²). O Sample Sort resolve escolhendo
+   os limites por amostragem.
+
+P: Por que não usar rand()?
+R: Ele muda entre sistemas; no Windows vai só até 32767. O xorshift64 gera os mesmos dados
+   em qualquer máquina.
+
+P: Por que não medir com clock()?
+R: No Linux ele soma o tempo de CPU de todas as threads. Usamos omp_get_wtime() no Linux e o
+   contador de alta precisão (QueryPerformanceCounter) no Windows.
+
+
+==========================================================================================
+5. CHECKLIST ANTES DE APRESENTAR
+==========================================================================================
+
+A entrega segue o enunciado da Avaliação 05: um ZIP com o PDF da apresentação e só os
+códigos-fonte, postado no AVA antes do início da aula.
+
+  [ ] Trocar "[Nomes dos integrantes do grupo]" no slide 1 e "[nomes]" / "[nome]" neste
+      roteiro
+  [ ] Exportar os slides em PDF (PowerPoint: Arquivo > Exportar > Criar PDF)
+  [ ] Montar a pasta ProgPar_Nome1_Nome2_Nome3_Nome4_Nome5 com o PDF e os fontes
+      (.c, .h, .bat, .sh), sem o .exe
+  [ ] Compactar a pasta em ZIP e postar no AVA
+  [ ] Testar a demonstração no notebook que vai ser usado na aula
+  [ ] Deixar o relatório de reserva aberto, para o plano B
+  [ ] Ensaiar uma vez com cronômetro e ajustar os tempos

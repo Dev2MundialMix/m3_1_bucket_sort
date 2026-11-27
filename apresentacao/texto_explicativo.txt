@@ -1,0 +1,425 @@
+BUCKET SORT PARALELO COM OPENMP
+Texto explicativo de apoio à apresentação
+
+Avaliação 05 - Programação Paralela - Organização de Computadores (UNIVALI)
+Prof. Douglas Rossi de Melo - novembro de 2026
+
+
+==========================================================================================
+1. INTRODUÇÃO
+==========================================================================================
+
+Este trabalho mede quanto o Bucket Sort fica mais rápido quando o trabalho é dividido entre
+os núcleos da CPU com OpenMP. Na melhor medição, a versão paralela foi 4,76 vezes mais rápida
+que a sequencial (Intel Core i7-13620H, 10 milhões de números, 16 threads).
+
+Ordenar dados é uma das tarefas mais comuns da computação: bancos de dados, buscas,
+relatórios e jogos ordenam o tempo todo. Um programa comum usa só um núcleo, mesmo que o
+processador tenha 6, 8 ou 10. A programação paralela divide o trabalho entre os núcleos para
+terminar antes.
+
+A Avaliação 05 pede para analisar essa aceleração. O grupo ficou com o Tema G: OpenMP +
+Bucket Sort. A versão sequencial é a referência, e a paralela é comparada com ela em quatro
+execuções, feitas em três modelos de processador.
+
+Duas medidas aparecem em todo o texto:
+
+  - Speedup    = tempo sequencial ÷ tempo paralelo. Diz quantas vezes ficou mais rápido.
+  - Eficiência = speedup ÷ número de threads. Diz quanto de cada thread foi aproveitado;
+                 o ideal é 100%.
+
+
+==========================================================================================
+2. HISTÓRICO E EVOLUÇÃO
+==========================================================================================
+
+O Bucket Sort tem quase 70 anos, mas só virou um bom candidato ao paralelismo quando os PCs
+ganharam vários núcleos, a partir de 2005.
+
+  1956       Isaac e Singleton publicam "Sorting by address calculation".
+             Origem do Bucket Sort: o próprio valor indica em que parte da saída o item fica.
+
+  1967       Gene Amdahl apresenta a Lei de Amdahl.
+             A parte que não se paraleliza limita o ganho máximo.
+
+  1997-1998  OpenMP 1.0 (Fortran em 1997, C/C++ em 1998).
+             Padrão de diretivas para paralelizar em memória compartilhada.
+
+  2001       IBM POWER4: primeiro processador comercial com dois núcleos no mesmo chip.
+
+  2005       Pentium D e Athlon 64 X2 levam dois núcleos aos PCs; Herb Sutter publica
+             "The Free Lunch Is Over". A frequência parou de subir por causa do calor, e o
+             ganho passa a vir de mais núcleos.
+
+  2008       OpenMP 3.0: tarefas (tasks) para trabalho irregular.
+
+  2013       OpenMP 4.0: diretivas SIMD e envio de laços para GPUs e outros aceleradores
+             (diretiva target).
+
+  2021       OpenMP 5.2, a versão usada no trabalho. Intel Alder Lake (12ª geração): primeiros
+             Core híbridos, com núcleos P e E.
+
+  2024       OpenMP 6.0, a versão mais recente da especificação.
+
+A evolução teve três fases. Até 2004, cada geração de CPU subia a frequência e o mesmo
+programa ficava mais rápido sozinho. Depois disso, o ganho passou a vir de mais núcleos, e o
+programa precisa ser escrito para usá-los. Hoje os chips são híbridos e heterogêneos: núcleos
+de tipos diferentes na mesma CPU, mais GPU e NPU no mesmo encapsulamento.
+
+
+==========================================================================================
+3. VISÃO GERAL DA ARQUITETURA
+==========================================================================================
+
+O programa roda numa CPU multicore de memória compartilhada: vários núcleos no mesmo chip,
+todos lendo e escrevendo na mesma RAM. É esse o tipo de máquina para o qual o OpenMP foi feito.
+
+  - Núcleos: cada um executa uma thread; com SMT (Hyper-Threading), duas threads dividem o
+    mesmo núcleo físico.
+  - Caches L1 e L2: pequenas e muito rápidas, de cada núcleo.
+  - Cache L3: maior e dividida por todos os núcleos (16 a 32 MB nas CPUs testadas).
+  - RAM: a memória principal, compartilhada e mais lenta; todo o vetor de entrada e saída
+    passa por ela.
+
+No software, o OpenMP segue o modelo FORK-JOIN: a thread principal roda sozinha, abre uma
+equipe de threads ao chegar numa região paralela (fork) e espera todas numa barreira no fim
+(join). A versão paralela faz isso duas vezes em cada ordenação:
+
+  Thread principal: gera os N números
+        |
+        |  fork: abre a equipe
+        v
+  [ Fase 1 - distribuição - #pragma omp for schedule(static) ]
+     Thread 0      Thread 1      Thread 2      Thread 3
+     parte 1       parte 2       parte 3       parte 4      -> cada uma enche os seus baldes
+        |
+        |  barreira (join): espera todas
+        v
+  Thread principal - Fase 2: onde cada balde começa (sequencial)
+        |
+        |  fork: abre a equipe
+        v
+  [ Fase 3 - ordenação - #pragma omp parallel for schedule(dynamic, 64) ]
+     Thread 0      Thread 1      Thread 2      Thread 3     -> cada uma pega 64 baldes e ordena
+        |
+        |  barreira (join): espera todas
+        v
+  Vetor ordenado, idêntico ao da versão sequencial
+
+O desenho usa 4 threads; o programa testa de 1 até o número de núcleos lógicos.
+
+
+==========================================================================================
+4. DETALHAMENTO DO ACELERADOR: INTEL CORE i7-13620H
+==========================================================================================
+
+O acelerador detalhado é o Intel Core i7-13620H: a CPU de duas das quatro execuções e a que
+teve o maior speedup (4,76x). Ela é HÍBRIDA: tem dois tipos de núcleo no mesmo chip.
+
+                          P-cores (desempenho)     E-cores (eficiência)
+  Quantidade              6                        4
+  Threads por núcleo      2 (Hyper-Threading)      1
+  Threads de hardware     12                       4
+  Frequência máxima       4,9 GHz                  3,6 GHz
+  Cache L2                1,25 MB por núcleo       2 MB para os 4
+
+Os 10 núcleos dividem uma cache L3 de 24 MB. O consumo base é de 45 W e pode chegar a 115 W
+em turbo. É da 13ª geração (Raptor Lake), de 2023. Por isso os relatórios mostram
+"10 físicos / 16 lógicos": 6 x 2 + 4 x 1 = 16.
+
+O hardware (Intel Thread Director) e o Windows decidem em que núcleo cada thread roda. Com
+poucas threads, elas tendem a ficar nos P-cores, que são os mais rápidos. A partir de
+7 threads, as novas vão para E-cores ou dividem um P-core com outra thread via
+Hyper-Threading. Cada thread extra rende menos, e a eficiência em 10 milhões cai de 88%
+(2 threads) para 30% (16 threads).
+
+As três CPUs dos testes:
+
+  AMD Ryzen 5 7600 (DESKTOP-RFARPRU)
+    Desktop, Zen 4, 65 W - 6 núcleos / 12 threads - L3 de 32 MB - até 5,1 GHz
+
+  Intel Core i7-13620H (DESKTOP-JIF7GP7 e DEV01)
+    Notebook, híbrida, 45 W - 10 núcleos (6P + 4E) / 16 threads - L3 de 24 MB - até 4,9 GHz
+
+  AMD Ryzen 7 7735HS (Lenovo-Linux-X64)
+    Notebook, Zen 3+, 35 W - 8 núcleos / 16 threads - L3 de 16 MB - até 4,75 GHz
+
+As duas AMD usam SMT (a versão da AMD do Hyper-Threading) em todos os núcleos, que são todos
+iguais.
+
+
+==========================================================================================
+5. COMO O CÓDIGO FUNCIONA (EXPLICAÇÃO BÁSICA)
+==========================================================================================
+
+O programa é escrito em C, compilado com GCC (-O2 -fopenmp) e usa a biblioteca OpenMP
+(libgomp). Ele ordena números reais entre 0 e 1 das duas formas e compara os tempos.
+
+A ideia do Bucket Sort
+----------------------
+Os valores estão espalhados por igual entre 0 e 1. O intervalo é dividido em k baldes do
+mesmo tamanho, e cada valor vai para o balde valor x k (arredondado para baixo). Todo valor do
+balde 3 é menor que qualquer valor do balde 4. Basta ordenar cada balde (com insertion sort)
+e juntar os baldes em ordem. O código usa cerca de 100 valores por balde.
+
+Exemplo com 8 números e 4 baldes:
+
+  Entrada:      0,42  0,07  0,91  0,33  0,58  0,12  0,76  0,29
+  Balde 0 (0 a 0,25):     0,07 0,12       -> ordenado: 0,07 0,12
+  Balde 1 (0,25 a 0,5):   0,42 0,33 0,29  -> ordenado: 0,29 0,33 0,42
+  Balde 2 (0,5 a 0,75):   0,58            -> ordenado: 0,58
+  Balde 3 (0,75 a 1):     0,91 0,76       -> ordenado: 0,76 0,91
+  Saída:        0,07  0,12  0,29  0,33  0,42  0,58  0,76  0,91
+
+O que o programa faz, em ordem
+------------------------------
+  1. Gera N números aleatórios com semente fixa (42), para que os dados sejam os mesmos em
+     qualquer máquina.
+  2. Roda a versão sequencial: uma vez para aquecer e mais cinco para tirar a média do tempo.
+  3. Roda a versão paralela com 1, 2, 3... até o número de núcleos lógicos, do mesmo jeito.
+  4. Confere se o resultado paralelo é idêntico ao sequencial, valor a valor.
+  5. Escreve tempo, speedup e eficiência na tela e no arquivo
+     relatorio_<máquina>_<data>_<hora>.txt.
+
+Sem argumentos, faz isso para N = 1, 10 e 50 milhões. Com um número (executar.bat 10000000),
+testa só aquele tamanho.
+
+Arquivos:
+  bucket_sort.c          as duas versões do algoritmo, a medição e o relatório
+  info_maquina.c / .h    lê CPU, núcleos, RAM e sistema, no Windows e no Linux
+  executar.bat / .sh     compila com o GCC e roda
+
+O que foi paralelizado
+----------------------
+A versão paralela tem três fases. A regra principal é que duas threads nunca escrevem no
+mesmo lugar ao mesmo tempo, então não precisa de trava (lock).
+
+  Fase 1 - Distribuição (paralela)
+    Cada thread pega um pedaço da entrada e coloca os valores nos seus próprios baldes.
+    Diretivas: #pragma omp parallel + #pragma omp for schedule(static)
+
+  Fase 2 - Posições (sequencial)
+    Soma os tamanhos para saber onde cada balde começa na saída. É rápida.
+    Diretiva: nenhuma
+
+  Fase 3 - Ordenação (paralela)
+    Cada thread pega baldes inteiros, junta os pedaços na posição final e ordena.
+    Diretiva: #pragma omp parallel for schedule(dynamic, 64)
+
+schedule(static) dá a cada thread um bloco contínuo e igual da entrada. schedule(dynamic, 64)
+entrega pacotes de 64 baldes a quem terminar primeiro, porque os baldes têm tamanhos um pouco
+diferentes.
+
+
+==========================================================================================
+6. RESULTADOS E ANÁLISE
+==========================================================================================
+
+A versão paralela foi mais rápida em todas as máquinas e sempre deu o resultado correto, mas
+o ganho ficou entre 2,2x e 4,8x, longe do ideal de 12 a 16x.
+
+Speedup com 10 milhões de números, por número de threads:
+
+  Threads   i7 (JIF7GP7)   i7 (DEV01)   Ryzen 5 7600   Ryzen 7 7735HS
+     1          1,16          1,06          1,02            1,00
+     2          1,76          1,87          1,63            1,43
+     4          2,35          2,38          2,48            1,78
+     6          2,74          2,67          2,84            2,03
+     8          3,13          2,90          3,22            2,25
+    10          3,95          3,58          3,47            2,17
+    12          4,31          3,48          3,66            2,17
+    14          4,68          3,27            -             2,22
+    16          4,76          3,34            -             2,23
+
+Com 2 threads, a eficiência ficou entre 71% e 94%. Depois disso, cada thread nova rende menos,
+e no Ryzen 7 7735HS o ganho para de crescer em 8 threads, o número de núcleos físicos dele.
+
+Melhor resultado de cada máquina:
+
+  DESKTOP-RFARPRU (Ryzen 5 7600)
+    10 milhões: sequencial 0,345 s, melhor paralelo 0,094 s (12 threads)
+    Melhor speedup: 4,12x com 1 milhão (12 threads), 2,98x com 50 milhões (12 threads)
+
+  DESKTOP-JIF7GP7 (i7-13620H)
+    10 milhões: sequencial 0,794 s, melhor paralelo 0,167 s (16 threads)
+    Melhor speedup: 4,14x com 1 milhão (16 threads), 4,00x com 50 milhões (15 threads)
+
+  DEV01 (i7-13620H)
+    10 milhões: sequencial 0,421 s, melhor paralelo 0,117 s (11 threads)
+    Melhor speedup: 4,71x com 1 milhão (16 threads); 50 milhões não foi executado
+
+  Lenovo-Linux-X64 (Ryzen 7 7735HS)
+    10 milhões: sequencial 0,368 s, melhor paralelo 0,163 s (8 threads)
+    1 e 50 milhões não foram executados
+
+Por que o ganho não é linear
+----------------------------
+  - Memória: o Bucket Sort faz pouca conta e move muitos dados. Todos os núcleos dividem a
+    mesma RAM, e ela vira o gargalo. Por isso 50 milhões escala pior que 10 milhões no
+    Ryzen 5 7600 (2,98x contra 3,66x).
+  - Parte sequencial e alocações: a fase 2 é sequencial, e malloc, realloc e free têm partes
+    que o sistema não executa em paralelo.
+  - Núcleos lógicos: duas threads no mesmo núcleo físico (SMT/Hyper-Threading) dividem o mesmo
+    hardware. No i7, os E-cores ainda são mais lentos.
+  - Turbo: com mais núcleos ativos, a CPU baixa a frequência para não esquentar.
+
+Pela Lei de Amdahl, o speedup máximo com p threads, quando uma fração f do trabalho é
+paralelizável, é:
+
+    S(p) = 1 / ((1 - f) + f / p)
+
+Um speedup de 4,76x com 16 threads equivale a cerca de 16% do tempo se comportando como
+sequencial, contando a espera pela memória.
+
+Dois cuidados ao ler os números
+-------------------------------
+  - Speedup maior não é tempo menor. O DESKTOP-JIF7GP7 teve o maior speedup, mas o sequencial
+    dele foi o mais lento (0,794 s). O Ryzen 5 7600 teve o menor tempo de todos: 0,094 s.
+  - Mesma CPU, tempos diferentes. DESKTOP-JIF7GP7 e DEV01 têm o mesmo i7-13620H, mas o
+    sequencial variou de 0,421 s a 0,794 s. A causa provável é o modo de energia ou a carga do
+    sistema; os relatórios não registram isso.
+
+Com 1 thread, a versão paralela às vezes passa de 100% de eficiência (115,6% no JIF7GP7).
+Ela ordena cada balde direto no vetor final, o que muda o acesso à memória, e há variação
+normal de medição.
+
+
+==========================================================================================
+7. EXEMPLO DE APLICAÇÃO
+==========================================================================================
+
+O exemplo prático é a demonstração em aula: ordenar 10 milhões de números e ver o tempo cair
+conforme as threads aumentam. No Ryzen 5 7600, o tempo vai de 0,345 s (sequencial) para
+0,094 s (12 threads).
+
+    .\executar.bat 10000000        (Windows)
+    sh executar.sh 10000000        (Linux)
+
+Trecho da saída real (DESKTOP-RFARPRU):
+
+           N  Versao      Threads    Tempo(s)   Speedup  Eficiencia  Correto
+    10000000  sequencial        -      0.3451      1.00           -      sim
+    10000000  paralela          1      0.3378      1.02      102.2%      sim
+    10000000  paralela          6      0.1216      2.84       47.3%      sim
+    10000000  paralela         12      0.0944      3.66       30.5%      sim
+
+A mesma ideia - separar por faixas e ordenar cada faixa à parte - aparece em sistemas reais:
+
+  - Big Data: o TeraSort do Hadoop amostra as chaves, divide-as em faixas e manda cada faixa
+    para uma máquina. Cada máquina ordena a sua faixa, e o resultado final já sai em ordem.
+    É um Bucket Sort em que cada balde é um computador.
+  - Bancos de dados: tabelas grandes são particionadas por faixa de valores para ordenar e
+    juntar em paralelo.
+  - Computação gráfica: objetos são agrupados por faixa de profundidade para desenhar do fundo
+    para a frente.
+  - Estatística: montar um histograma (quantos valores caíram em cada faixa) é exatamente a
+    fase de distribuição do Bucket Sort.
+
+
+==========================================================================================
+8. COMPARATIVO COM SIMILARES
+==========================================================================================
+
+O Bucket Sort é o mais fácil de paralelizar entre os algoritmos comuns, mas só é rápido quando
+os dados estão bem espalhados. E o OpenMP é a forma mais curta de usar vários núcleos de um
+computador só.
+
+Outros algoritmos de ordenação
+------------------------------
+  Bucket Sort (usado)
+    Tempo médio O(n) com dados uniformes; pior caso O(n²), se tudo cair num balde só.
+    Paraleliza muito bem: cada balde é independente.
+  Quicksort
+    Tempo médio O(n log n); pior caso O(n²).
+    Paraleliza bem depois da primeira divisão, que é sequencial.
+  Merge Sort
+    Tempo médio e pior caso O(n log n).
+    Paraleliza bem: as metades são independentes; a última junção é o gargalo.
+  Radix Sort
+    O(d · n), com d = número de dígitos.
+    Paraleliza bem: contagem por thread + soma das posições.
+
+Para dados que não são uniformes existe o Sample Sort: ele sorteia uma amostra para escolher
+os limites dos baldes. É a versão do Bucket Sort usada em ordenação paralela de verdade.
+
+Outras ferramentas de paralelismo
+---------------------------------
+  OpenMP (usado)          CPU, memória compartilhada. Diretivas #pragma no código que já
+                          existe. Melhor para laços em CPU multicore, com pouco código.
+  Pthreads / std::thread  CPU, memória compartilhada. Cria e sincroniza cada thread à mão.
+                          Mais controle, ao custo de mais código.
+  Intel oneTBB            CPU, memória compartilhada. Biblioteca C++ de tarefas e algoritmos
+                          prontos. Boa para trabalho irregular em C++.
+  MPI                     Vários computadores. Processos que trocam mensagens. Clusters e
+                          supercomputadores.
+  CUDA / OpenCL           GPU. Kernels rodados por milhares de threads. Bom para muitos dados
+                          simples; exige copiar os dados para a GPU.
+
+
+==========================================================================================
+9. PERSPECTIVAS FUTURAS
+==========================================================================================
+
+O próximo ganho viria de atacar a memória e a parte sequencial do código, e depois de sair da
+CPU para a GPU ou para várias máquinas.
+
+Melhorias no nosso código
+-------------------------
+  - Paralelizar a fase 2 com uma soma de prefixos paralela; hoje ela é a única parte
+    sequencial.
+  - Contar antes de distribuir: uma passada só para contar o tamanho de cada balde permite
+    alocar o tamanho exato e evitar realloc.
+  - Fixar threads em núcleos (OMP_PROC_BIND=close, OMP_PLACES=cores) e testar o i7 usando só
+    os P-cores.
+  - Sample Sort: escolher os limites dos baldes por amostragem, para funcionar bem com dados
+    que não são uniformes.
+  - GPU: levar o laço para a placa de vídeo com #pragma omp target (OpenMP 4.0 em diante) ou
+    CUDA.
+  - Cluster: dividir os baldes entre computadores com MPI, como no TeraSort.
+
+Tendências de hardware e software
+---------------------------------
+  - Mais núcleos por chip e CPUs híbridas (P-cores e E-cores) também na AMD e na ARM.
+  - GPU e NPU no mesmo chip da CPU, dividindo a memória.
+  - Caches maiores e memória mais rápida (DDR5, cache empilhada), porque a memória é o
+    gargalo de algoritmos como este.
+  - OpenMP 6.0 (2024) melhora tarefas e o uso de aceleradores com as mesmas diretivas.
+
+
+==========================================================================================
+10. GLOSSÁRIO
+==========================================================================================
+
+  Thread               Uma linha de execução; o OpenMP cria várias para dividir o trabalho.
+  Núcleo físico        Uma unidade de processamento real dentro da CPU.
+  Núcleo lógico        O que o sistema enxerga; com SMT/Hyper-Threading, um núcleo físico
+                       aparece como dois.
+  Fork-join            Modelo do OpenMP: a thread principal abre uma equipe de threads (fork)
+                       e espera todas terminarem (join).
+  Barreira             Ponto onde cada thread espera as outras antes de seguir.
+  Condição de corrida  Erro quando duas threads escrevem no mesmo lugar ao mesmo tempo.
+  Lei de Amdahl        Se uma fração do programa não se paraleliza, ela limita o speedup
+                       máximo.
+  Largura de banda     Quantos bytes por segundo a memória consegue entregar a todos os
+                       núcleos juntos.
+
+
+==========================================================================================
+11. REFERÊNCIAS
+==========================================================================================
+
+  - CORMEN, T. H. et al. Algoritmos: Teoria e Prática. Seção 8.4 (Bucket Sort).
+  - ISAAC, E. J.; SINGLETON, R. C. Sorting by address calculation. Journal of the ACM,
+    v. 3, n. 3, 1956.
+  - AMDAHL, G. M. Validity of the single processor approach to achieving large scale
+    computing capabilities. AFIPS Conference, 1967.
+  - OpenMP Architecture Review Board. OpenMP Application Programming Interface, versão 5.2,
+    2021. https://www.openmp.org/specifications/
+  - MARSAGLIA, G. Xorshift RNGs. Journal of Statistical Software, v. 8, 2003.
+  - SUTTER, H. The Free Lunch Is Over. Dr. Dobb's Journal, 2005.
+  - Intel Core i7-13620H: https://www.intel.com/content/www/us/en/products/sku/232130.html
+  - AMD Ryzen 5 7600: https://www.amd.com/de/products/processors/desktops/ryzen/7000-series/amd-ryzen-5-7600.html
+  - AMD Ryzen 7 7735HS: https://www.amd.com/en/products/apu/amd-ryzen-7-7735hs
+  - Relatórios do grupo: relatorio_DESKTOP-RFARPRU_20261120_155545.txt,
+    relatorio_DESKTOP-JIF7GP7_20261126_131104.txt, relatorio_DEV01_20261126_154851.txt,
+    relatorio_Lenovo-Linux-X64_20261126_153851.txt
